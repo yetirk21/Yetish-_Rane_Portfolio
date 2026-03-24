@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yetish Rane — Robotics & Automation Engineer</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --cyan: #00ffe7;
+  --blue: #0088ff;
+  --orange: #ff6a00;
+  --glass: rgba(0,20,40,0.75);
+}
+html, body {
+  width:100%; height:100%;
+  overflow:hidden;
+  background:#00000a;
+  color:#fff;
+  font-family:'Exo 2', sans-serif;
+  cursor:crosshair;
+}
+
+/* CANVAS */
+#bg { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; }
+
+/* SCANLINES */
+#scan {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  pointer-events:none; z-index:2;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
+}
+
+/* CORNER BRACKETS */
+.corner { position:fixed; width:44px; height:44px; z-index:50; opacity:0.5; }
+.corner svg { width:100%; height:100%; }
+.c-tl { top:14px; left:14px; }
+.c-tr { top:14px; right:14px; transform:scaleX(-1); }
+.c-bl { bottom:14px; left:14px; transform:scaleY(-1); }
+.c-br { bottom:14px; right:14px; transform:scale(-1,-1); }
+
+/* HUD TOP */
+#hud {
+  position:fixed; top:18px; left:50%; transform:translateX(-50%);
+  font-family:'Share Tech Mono', monospace; font-size:10px;
+  color:rgba(0,255,231,0.35); letter-spacing:3px; z-index:50;
+  white-space:nowrap;
+}
+
+/* PROGRESS BAR */
+#pbar {
+  position:fixed; top:0; left:0; height:2px; width:0%; z-index:100;
+  background:linear-gradient(90deg, var(--cyan), var(--blue));
+  box-shadow:0 0 10px var(--cyan);
+  transition:width 0.4s ease;
+}
+
+/* NAV DOTS */
+#navdots {
+  position:fixed; right:22px; top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:14px; z-index:100;
+}
+.ndot {
+  width:7px; height:7px; border-radius:50%;
+  background:rgba(255,255,255,0.18);
+  cursor:pointer; transition:all 0.3s;
+  border:1px solid rgba(0,255,231,0.2);
+}
+.ndot.on { background:var(--cyan); box-shadow:0 0 10px var(--cyan); transform:scale(1.6); }
+.ndot:hover { background:rgba(0,255,231,0.5); }
+
+/* SECTION LABELS on dots */
+.ndot-wrap { position:relative; display:flex; align-items:center; }
+.ndot-label {
+  position:absolute; right:18px;
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:rgba(0,255,231,0); letter-spacing:2px; white-space:nowrap;
+  transition:color 0.3s; pointer-events:none;
+}
+.ndot-wrap:hover .ndot-label { color:rgba(0,255,231,0.7); }
+
+/* PANELS */
+.panel {
+  position:fixed; top:0; left:0; width:100%; height:100vh;
+  display:flex; align-items:center; justify-content:center;
+  pointer-events:none; z-index:10;
+  opacity:0; transform:translateY(20px);
+  transition:opacity 0.65s ease, transform 0.65s ease;
+}
+.panel.show { opacity:1; transform:translateY(0); pointer-events:auto; }
+
+.panel-inner {
+  max-width:780px; width:92%;
+  padding:36px 40px;
+  background:var(--glass);
+  border:1px solid rgba(0,255,231,0.14);
+  backdrop-filter:blur(18px);
+  border-radius:2px;
+  position:relative; overflow:hidden;
+  max-height:90vh; overflow-y:auto;
+}
+.panel-inner::-webkit-scrollbar { width:3px; }
+.panel-inner::-webkit-scrollbar-track { background:transparent; }
+.panel-inner::-webkit-scrollbar-thumb { background:var(--cyan); border-radius:2px; }
+
+/* accent lines */
+.panel-inner::before {
+  content:''; position:absolute; top:0; left:0;
+  width:3px; height:100%;
+  background:linear-gradient(180deg, var(--cyan), var(--blue));
+}
+.panel-inner::after {
+  content:''; position:absolute; top:0; left:0;
+  width:100%; height:1px;
+  background:linear-gradient(90deg, var(--cyan), transparent 60%);
+}
+
+/* TYPOGRAPHY */
+.sec-tag {
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px; letter-spacing:4px; color:var(--cyan);
+  text-transform:uppercase; margin-bottom:10px; opacity:0.8;
+}
+.sec-title {
+  font-family:'Orbitron',monospace;
+  font-size:clamp(26px,4.5vw,52px); font-weight:900;
+  line-height:1.05; letter-spacing:-1px;
+  background:linear-gradient(135deg,#fff 55%,var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  margin-bottom:14px;
+}
+.sec-body { font-size:14px; color:rgba(255,255,255,0.72); line-height:1.7; }
+
+/* HERO */
+#p0 .panel-inner { text-align:center; padding:44px 40px; }
+.hero-name {
+  font-family:'Orbitron',monospace;
+  font-size:clamp(34px,6vw,74px); font-weight:900;
+  letter-spacing:3px; line-height:1;
+  background:linear-gradient(135deg,#fff 25%,var(--cyan) 65%,var(--blue));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  margin-bottom:10px;
+}
+.hero-role {
+  font-family:'Share Tech Mono',monospace;
+  font-size:13px; letter-spacing:4px;
+  color:var(--cyan); text-transform:uppercase; margin-bottom:20px;
+}
+.hero-meta { font-size:14px; color:rgba(255,255,255,0.55); line-height:1.7; margin-bottom:26px; }
+
+/* BADGES */
+.badges { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.badge {
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  letter-spacing:2px; padding:5px 13px; border-radius:2px;
+  background:rgba(0,255,231,0.07); border:1px solid rgba(0,255,231,0.25);
+  color:var(--cyan); text-transform:uppercase;
+}
+.badge.or { background:rgba(255,106,0,0.08); border-color:rgba(255,106,0,0.3); color:var(--orange); }
+.badge.bl { background:rgba(0,136,255,0.08); border-color:rgba(0,136,255,0.3); color:var(--blue); }
+#p0 .badges { justify-content:center; }
+
+/* CARDS */
+.cards { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+.card {
+  background:rgba(0,255,231,0.03);
+  border:1px solid rgba(0,255,231,0.1);
+  border-left:2px solid var(--cyan);
+  padding:13px 16px; border-radius:2px;
+}
+.card.or { border-left-color:var(--orange); }
+.card.bl { border-left-color:var(--blue); }
+.card-title {
+  font-family:'Orbitron',monospace; font-size:12px;
+  color:#fff; font-weight:700; margin-bottom:3px;
+}
+.card-title.or { color:var(--orange); }
+.card-title.bl { color:var(--blue); }
+.card-sub {
+  font-family:'Share Tech Mono',monospace; font-size:11px;
+  color:var(--cyan); letter-spacing:1px; margin-bottom:6px;
+}
+.card-sub.or { color:var(--orange); }
+.card-sub.bl { color:var(--blue); }
+.card-body { font-size:13px; color:rgba(255,255,255,0.6); line-height:1.6; }
+
+/* SKILLS GRID */
+.sgrid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px; }
+.scat {
+  background:rgba(0,20,40,0.5); border:1px solid rgba(0,255,231,0.1);
+  padding:13px; border-radius:2px;
+}
+.scat-title {
+  font-family:'Orbitron',monospace; font-size:9px;
+  letter-spacing:3px; color:var(--cyan); text-transform:uppercase;
+  margin-bottom:9px;
+}
+.sitem {
+  font-family:'Share Tech Mono',monospace; font-size:11px;
+  color:rgba(255,255,255,0.6); margin-bottom:5px; padding-left:14px;
+  position:relative;
+}
+.sitem::before { content:'>'; position:absolute; left:0; color:var(--cyan); }
+
+/* ACHIEVEMENTS */
+.achlist { list-style:none; margin-top:14px; }
+.achlist li {
+  font-size:13px; color:rgba(255,255,255,0.68);
+  padding:8px 0 8px 18px; position:relative;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  line-height:1.5;
+}
+.achlist li::before {
+  content:'◆'; position:absolute; left:0;
+  color:var(--cyan); font-size:7px; top:12px;
+}
+
+/* CONTACT GRID */
+.cgrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+.clink {
+  display:flex; align-items:center; gap:10px;
+  background:rgba(0,255,231,0.05); border:1px solid rgba(0,255,231,0.14);
+  padding:12px 15px; border-radius:2px;
+  text-decoration:none; color:#fff;
+  font-family:'Share Tech Mono',monospace; font-size:11px;
+  letter-spacing:1px; transition:all 0.25s;
+}
+.clink:hover { background:rgba(0,255,231,0.1); border-color:var(--cyan); color:var(--cyan); }
+
+/* SCROLL HINT */
+#hint {
+  position:fixed; bottom:26px; left:50%; transform:translateX(-50%);
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  letter-spacing:4px; color:rgba(0,255,231,0.45);
+  text-transform:uppercase; z-index:100;
+  animation:pulse 2s infinite; transition:opacity 0.5s;
+}
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+/* SECTION COUNTER */
+#counter {
+  position:fixed; bottom:26px; right:22px;
+  font-family:'Share Tech Mono',monospace; font-size:11px;
+  color:rgba(0,255,231,0.4); letter-spacing:2px; z-index:100;
+}
+
+@media(max-width:580px){
+  .sgrid { grid-template-columns:1fr; }
+  .cgrid { grid-template-columns:1fr; }
+  .panel-inner { padding:24px 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- BG CANVAS -->
+<canvas id="bg"></canvas>
+
+<!-- OVERLAYS -->
+<div id="scan"></div>
+
+<!-- CORNERS -->
+<div class="corner c-tl"><svg viewBox="0 0 44 44"><path d="M2 42V2h40" stroke="#00ffe7" stroke-width="1.5" fill="none"/></svg></div>
+<div class="corner c-tr"><svg viewBox="0 0 44 44"><path d="M2 42V2h40" stroke="#00ffe7" stroke-width="1.5" fill="none"/></svg></div>
+<div class="corner c-bl"><svg viewBox="0 0 44 44"><path d="M2 42V2h40" stroke="#00ffe7" stroke-width="1.5" fill="none"/></svg></div>
+<div class="corner c-br"><svg viewBox="0 0 44 44"><path d="M2 42V2h40" stroke="#00ffe7" stroke-width="1.5" fill="none"/></svg></div>
+
+<!-- HUD -->
+<div id="hud">YETISH.RANE &nbsp;//&nbsp; ROBOTICS_ENG &nbsp;//&nbsp; PUNE_IN &nbsp;//&nbsp; 2026</div>
+
+<!-- PROGRESS -->
+<div id="pbar"></div>
+
+<!-- NAV DOTS -->
+<div id="navdots">
+  <div class="ndot-wrap"><span class="ndot-label">HOME</span><div class="ndot on" onclick="goTo(0)"></div></div>
+  <div class="ndot-wrap"><span class="ndot-label">ABOUT</span><div class="ndot" onclick="goTo(1)"></div></div>
+  <div class="ndot-wrap"><span class="ndot-label">PROJECTS</span><div class="ndot" onclick="goTo(2)"></div></div>
+  <div class="ndot-wrap"><span class="ndot-label">PUBLICATIONS</span><div class="ndot" onclick="goTo(3)"></div></div>
+  <div class="ndot-wrap"><span class="ndot-label">SKILLS</span><div class="ndot" onclick="goTo(4)"></div></div>
+  <div class="ndot-wrap"><span class="ndot-label">CONTACT</span><div class="ndot" onclick="goTo(5)"></div></div>
+</div>
+
+<!-- SECTION COUNTER -->
+<div id="counter">01 / 06</div>
+
+<!-- ===================== PANELS ===================== -->
+
+<!-- 0: HERO -->
+<div class="panel show" id="p0">
+  <div class="panel-inner">
+    <div class="sec-tag">// System Online — Portfolio Loaded</div>
+    <div class="hero-name">YETISH<br>RANE</div>
+    <div class="hero-role">Automation &amp; Robotics Engineer &nbsp;·&nbsp; Innovator &nbsp;·&nbsp; Researcher</div>
+    <div class="hero-meta">
+      B.Tech — Automation &amp; Robotics &nbsp;·&nbsp; CGPA 9.05<br>
+      JSPM's Rajarshi Shahu College of Engineering, Pune &nbsp;·&nbsp; 2022–2026
+    </div>
+    <div class="badges">
+      <span class="badge">SLAM &amp; Path Planning</span>
+      <span class="badge">Embedded Systems</span>
+      <span class="badge">LiDAR · AMR</span>
+      <span class="badge or">Utility Patent Holder</span>
+      <span class="badge bl">IEEE Vice Chair</span>
+      <span class="badge or">CGPA 9.05</span>
+      <span class="badge bl">NITK Researcher</span>
+    </div>
+  </div>
+</div>
+
+<!-- 1: ABOUT -->
+<div class="panel" id="p1">
+  <div class="panel-inner">
+    <div class="sec-tag">// Sector 01 — Identity Scan</div>
+    <div class="sec-title">About Me</div>
+    <div class="sec-body">
+      Final-year B.Tech student specialising in Automation &amp; Robotics at JSPM RSCOE, Pune.
+      Passionate about building intelligent machines — from amphibious spider bots to warehouse AMRs.
+      I combine hardware instinct with software intelligence, and research with real-world impact.
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-title">Research Intern · NITK Surathkal</div>
+        <div class="card-sub">June – July 2025 &nbsp;·&nbsp; Dept. of Mechatronics</div>
+        <div class="card-body">Literature study on bio-inspired wet surface climbing via gecko adhesion for underwater infrastructure inspection. Contributed to a potential journal publication on biomimetic robotics.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Industrial Training · Autofina Robotics Pvt. Ltd.</div>
+        <div class="card-sub">PLC · SCADA · HMI &nbsp;·&nbsp; Just Engineering, Pune</div>
+        <div class="card-body">Hands-on training in PLC programming, SCADA &amp; HMI systems. Built a soccer-playing robot at Dolphin Labs and worked with STM-32 embedded systems at IIT Techfest workshops.</div>
+      </div>
+    </div>
+    <div class="badges" style="margin-top:14px">
+      <span class="badge bl">yetishrane@gmail.com</span>
+      <span class="badge">+91 7517364977</span>
+      <span class="badge">Pune, India</span>
+    </div>
+  </div>
+</div>
+
+<!-- 2: PROJECTS -->
+<div class="panel" id="p2">
+  <div class="panel-inner">
+    <div class="sec-tag">// Sector 02 — Mission Logs</div>
+    <div class="sec-title">Projects</div>
+    <div class="cards">
+      <div class="card">
+        <div class="card-title">Autonomous Mobile Robot — Warehouse Management</div>
+        <div class="card-sub">Sep 2025 – Present &nbsp;·&nbsp; Automation in Logistics</div>
+        <div class="card-body">LiDAR-based AMR using SLAM with hybrid A* + DWA path planning for fully autonomous navigation. Sensor fusion architecture supports 80–100 kg payload, aligned with industry standards.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Automatic Industrial Waste Sorting System</div>
+        <div class="card-sub">Aug – Oct 2025 &nbsp;·&nbsp; Competition-Based Innovative Project</div>
+        <div class="card-body">AI-powered Machine Vision for real-time sorting of metal, plastic &amp; paper using PLC-governed sensors + pneumatic actuators. Custom 3D-printed rack-and-pinion actuator for multi-bin segregation.</div>
+      </div>
+      <div class="card">
+        <div class="card-title">E-Shoes — Piezoelectric Energy Harvester</div>
+        <div class="card-sub">Dec 2022 – Feb 2023 &nbsp;·&nbsp; Wearable Technology</div>
+        <div class="card-body">Piezoelectric crystals in shoe soles convert walking pressure into usable electrical energy — powering LEDs, sensors, GPS units. Potential military &amp; everyday wearable applications.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3: PUBLICATIONS -->
+<div class="panel" id="p3">
+  <div class="panel-inner">
+    <div class="sec-tag">// Sector 03 — Research Transmissions</div>
+    <div class="sec-title">Publications</div>
+    <div class="cards">
+      <div class="card or">
+        <div class="card-title or">Utility Patent — Amphibious Mini Surveillance Spider Bot</div>
+        <div class="card-sub or">Issue No. 46/2025 &nbsp;·&nbsp; App. No. 202521086603 &nbsp;·&nbsp; Dated 14/11/2025</div>
+        <div class="card-body">Novel amphibious robot for land &amp; water surveillance. Hybrid mobility, modular sensors (FPV, Thermal, LiDAR), AI-based terrain adaptation, and multi-source energy harvesting via solar, piezoelectric, and kinetic methods.</div>
+      </div>
+      <div class="card bl">
+        <div class="card-title bl">Review Paper — Navigation &amp; Path-Planning for Autonomous Mobile Robots</div>
+        <div class="card-sub bl">IEEE INSECT-2026 &nbsp;·&nbsp; 6 Authors</div>
+        <div class="card-body">Comprehensive review of navigation and path-planning techniques for autonomous mobile robots, presented at IEEE International Conference on Intelligent &amp; Sustainable Electronics &amp; Computing Technologies 2026.</div>
+      </div>
+    </div>
+    <div class="badges" style="margin-top:14px">
+      <span class="badge or">Patent Holder</span>
+      <span class="badge bl">IEEE Published</span>
+      <span class="badge">NITK Research Contributor</span>
+    </div>
+  </div>
+</div>
+
+<!-- 4: SKILLS -->
+<div class="panel" id="p4">
+  <div class="panel-inner">
+    <div class="sec-tag">// Sector 04 — Core Systems</div>
+    <div class="sec-title">Skills</div>
+    <div class="sgrid">
+      <div class="scat">
+        <div class="scat-title">Automation &amp; Control</div>
+        <div class="sitem">Sensor Integration</div>
+        <div class="sitem">Microcontrollers / Embedded</div>
+        <div class="sitem">Hydraulics &amp; Pneumatics</div>
+        <div class="sitem">Machine Vision System</div>
+        <div class="sitem">Industry 4.0</div>
+      </div>
+      <div class="scat">
+        <div class="scat-title">Programming &amp; ML</div>
+        <div class="sitem">Python</div>
+        <div class="sitem">PLC Programming</div>
+        <div class="sitem">OpenCV · YOLO · MediaPipe</div>
+        <div class="sitem">COBOT Programming</div>
+      </div>
+      <div class="scat">
+        <div class="scat-title">Simulation Tools</div>
+        <div class="sitem">TIA Portal</div>
+        <div class="sitem">RoboDK · Factory I/O</div>
+        <div class="sitem">Automation Studio</div>
+        <div class="sitem">MATLAB</div>
+      </div>
+      <div class="scat">
+        <div class="scat-title">Design Software</div>
+        <div class="sitem">Autodesk Fusion 360</div>
+        <div class="sitem">CATIA V5</div>
+        <div class="sitem">3D Experience</div>
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <div class="scat-title" style="margin-bottom:10px">Positions of Responsibility</div>
+      <div class="badges">
+        <span class="badge bl">Vice Chair · IEEE RAS JSPM RSCOE</span>
+        <span class="badge">Social Media Lead · ARSA</span>
+        <span class="badge">Member · The Robotics Society</span>
+        <span class="badge or">Top 5% — Dept. Rank</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5: CONTACT -->
+<div class="panel" id="p5">
+  <div class="panel-inner">
+    <div class="sec-tag">// Sector 05 — Signal Uplink</div>
+    <div class="sec-title">Contact &amp;<br>Achievements</div>
+    <ul class="achlist">
+      <li>Finalist — National Level Janatics Automation Skill Challenge 2025</li>
+      <li>Top 5 departmental ranking — earned academic distinction</li>
+      <li>Representative — IEEE Leadership Summit 2024</li>
+      <li>Participant — Smart India Hackathon 2024 (Ministry of Science &amp; Technology)</li>
+      <li>Event Coordinator — IEEE Research Symposium 2.0</li>
+      <li>Volunteer — Innovision 2024 &amp; 2025, premier college event</li>
+      <li>IIT Techfest Robotics Workshop &nbsp;·&nbsp; Drone Design Workshop</li>
+      <li>MATLAB Onramp Certified &nbsp;·&nbsp; UiPath Academic Alliance Certified</li>
+    </ul>
+    <div class="cgrid">
+      <a class="clink" href="mailto:yetishrane@gmail.com">✉ &nbsp;yetishrane@gmail.com</a>
+      <a class="clink" href="https://linkedin.com/in/yetishrane" target="_blank">⬡ &nbsp;linkedin.com/in/yetishrane</a>
+      <a class="clink" href="tel:+917517364977">◎ &nbsp;+91 7517364977</a>
+      <a class="clink">◈ &nbsp;Pune, India</a>
+    </div>
+  </div>
+</div>
+
+<!-- SCROLL HINT -->
+<div id="hint">↓ &nbsp; scroll / arrow keys to navigate</div>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ── THREE.JS SCENE ──────────────────────────────────────────
+const canvas = document.getElementById('bg');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x00000a, 1);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x00000a, 0.007);
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 800);
+camera.position.set(0, 0, 0);
+
+function onResize() {
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+onResize();
+window.addEventListener('resize', onResize);
+
+// STARS
+function addStars(n, spread, zRange, size, color) {
+  const geo = new THREE.BufferGeometry();
+  const p = new Float32Array(n * 3);
+  for (let i = 0; i < n*3; i+=3) {
+    p[i]   = (Math.random()-.5)*spread;
+    p[i+1] = (Math.random()-.5)*spread;
+    p[i+2] = -Math.random()*zRange;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({color, size, transparent:true, opacity:.85})));
+}
+addStars(4000, 300, 700, .28, 0xffffff);
+addStars(700,  80,  700, .5,  0x00ffe7);
+addStars(350,  60,  700, .4,  0x0088ff);
+
+// TUNNEL RINGS
+const rings = [];
+for (let i = 0; i < 80; i++) {
+  const r = 8 + Math.sin(i * .4) * 2;
+  const geo = new THREE.TorusGeometry(r, .032, 6, 80);
+  const hue = .5 - (i/80)*.15;
+  const col = new THREE.Color().setHSL(hue, 1, .55);
+  const op  = i % 6 === 0 ? .55 : .17;
+  const ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:op}));
+  ring.position.z = -i*8 - 4;
+  ring.rotation.x = Math.PI/2;
+  ring.rotation.y = (Math.random()-.5)*.4;
+  scene.add(ring);
+  rings.push(ring);
+}
+
+// LANDMARKS
+// 1 — DNA helix (About)
+const dna = new THREE.Group();
+for (let i=0; i<28; i++) {
+  const a = (i/28)*Math.PI*6;
+  [[1,0x00ffe7],[-1,0x0088ff]].forEach(([s,c]) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.22,8,8), new THREE.MeshBasicMaterial({color:c}));
+    m.position.set(Math.cos(a*s)*3, i*.48-6, Math.sin(a*s)*3);
+    dna.add(m);
+  });
+}
+dna.position.set(5.5, 0, -100); scene.add(dna);
+
+// 2 — Wireframe city (Projects)
+const city = new THREE.Group();
+[0x00ffe7,0x0088ff,0xff6a00].forEach((c,ci) => {
+  for (let i=0; i<8; i++) {
+    const h = 1+Math.random()*4.5;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(.75,h,.75), new THREE.MeshBasicMaterial({color:c,wireframe:true}));
+    m.position.set((Math.random()-.5)*14, h/2-2, (Math.random()-.5)*8);
+    city.add(m);
+  }
+});
+city.position.set(-4, 0, -190); scene.add(city);
+
+// 3 — Patent orbiter (Publications)
+const pub = new THREE.Group();
+pub.add(Object.assign(new THREE.Mesh(new THREE.TorusGeometry(3.5,.12,16,80), new THREE.MeshBasicMaterial({color:0xff6a00})), {}));
+const pr2 = new THREE.Mesh(new THREE.TorusGeometry(2.5,.08,16,80), new THREE.MeshBasicMaterial({color:0x0088ff}));
+pr2.rotation.x = Math.PI/2.5; pub.add(pr2);
+pub.add(new THREE.Mesh(new THREE.OctahedronGeometry(1), new THREE.MeshBasicMaterial({color:0x00ffe7,wireframe:true})));
+pub.position.set(5, 0, -280); scene.add(pub);
+
+// 4 — Skill constellation (Skills)
+const skill = new THREE.Group();
+const sc = [0x00ffe7,0x0088ff,0xff6a00,0xff3399,0xffcc00,0x44ff88,0xcc44ff,0xff4444,0x44ccff,0xff8844,0x88ff44,0x4488ff];
+for (let i=0; i<12; i++) {
+  const phi = Math.acos(1-2*(i+.5)/12), theta = Math.PI*(1+Math.sqrt(5))*i;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(.34,12,12), new THREE.MeshBasicMaterial({color:sc[i]}));
+  m.position.set(4*Math.sin(phi)*Math.cos(theta), 4*Math.sin(phi)*Math.sin(theta), 4*Math.cos(phi));
+  skill.add(m);
+}
+skill.position.set(-5, 0, -370); scene.add(skill);
+
+// 5 — Contact portal
+const portal = new THREE.Group();
+[[4,.15,0x00ffe7,0],[3,.08,0xff6a00,Math.PI/3],[2,.06,0x0088ff,0]].forEach(([r,t,c,ry]) => {
+  const m = new THREE.Mesh(new THREE.TorusGeometry(r,t,20,100), new THREE.MeshBasicMaterial({color:c}));
+  m.rotation.y = ry; portal.add(m);
+});
+const ico = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2,1), new THREE.MeshBasicMaterial({color:0x00ffe7,wireframe:true}));
+portal.add(ico);
+portal.position.set(0, 0, -460); scene.add(portal);
+
+// ── NAVIGATION ──────────────────────────────────────────────
+const TOTAL = 6;
+const DEPTH = 90;
+const PANELS = ['p0','p1','p2','p3','p4','p5'];
+const LABELS = ['01','02','03','04','05','06'];
+let cur = 0, targetZ = 0, currentZ = 0;
+
+function goTo(i) {
+  i = Math.max(0, Math.min(TOTAL-1, i));
+  if (i === cur) return;
+  cur = i;
+  targetZ = i * DEPTH;
+  // panels
+  PANELS.forEach((id,j) => {
+    document.getElementById(id).classList.toggle('show', j===i);
+  });
+  // dots
+  document.querySelectorAll('.ndot').forEach((d,j) => d.classList.toggle('on', j===i));
+  // progress bar
+  document.getElementById('pbar').style.width = ((i/(TOTAL-1))*100)+'%';
+  // counter
+  document.getElementById('counter').textContent = '0'+(i+1)+' / 0'+TOTAL;
+  // hint
+  document.getElementById('hint').style.opacity = i===0 ? '1' : '0';
+}
+
+// Mouse wheel
+let wCool = false;
+window.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (wCool) return;
+  wCool = true;
+  setTimeout(()=>wCool=false, 750);
+  goTo(cur + (e.deltaY > 0 ? 1 : -1));
+}, {passive:false});
+
+// Keyboard
+window.addEventListener('keydown', e => {
+  if (['ArrowDown','ArrowRight','PageDown'].includes(e.key)) { e.preventDefault(); goTo(cur+1); }
+  if (['ArrowUp','ArrowLeft','PageUp'].includes(e.key))     { e.preventDefault(); goTo(cur-1); }
+});
+
+// Touch
+let ty0 = 0;
+window.addEventListener('touchstart', e => { ty0 = e.touches[0].clientY; }, {passive:true});
+window.addEventListener('touchend',   e => {
+  const dy = ty0 - e.changedTouches[0].clientY;
+  if (Math.abs(dy) > 45) goTo(cur + (dy>0?1:-1));
+}, {passive:true});
+
+// ── RENDER LOOP ──────────────────────────────────────────────
+let mx=0, my=0;
+window.addEventListener('mousemove', e => {
+  mx = (e.clientX/innerWidth  - .5)*2;
+  my = (e.clientY/innerHeight - .5)*-2;
+});
+
+const clock = new THREE.Clock();
+(function tick() {
+  requestAnimationFrame(tick);
+  const t = clock.getElapsedTime();
+  // smooth camera travel
+  currentZ += (targetZ - currentZ) * .055;
+  camera.position.z = -currentZ;
+  camera.position.x += (mx * .5 - camera.position.x) * .04;
+  camera.position.y += (my * .3 - camera.position.y) * .04;
+  camera.lookAt(camera.position.x, camera.position.y, camera.position.z - 10);
+  // ring spin
+  rings.forEach((r,i) => { r.rotation.z += .003 + i*.00004; });
+  // landmarks
+  dna.rotation.y    = t * .5;
+  city.rotation.y   = t * .12;
+  pub.rotation.y    = t * .55;
+  pub.rotation.x    = t * .28;
+  skill.rotation.y  = t * .3;
+  skill.rotation.x  = t * .12;
+  portal.rotation.y = t * .35;
+  ico.rotation.x    = t * 1.1;
+  ico.rotation.z    = t * .8;
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
+</html>
