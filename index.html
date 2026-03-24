@@ -19,8 +19,132 @@ html, body {
   background:#00000a;
   color:#fff;
   font-family:'Exo 2', sans-serif;
-  cursor:crosshair;
+  cursor:none;
 }
+
+/* ── CUSTOM CURSOR ───────────────────────────── */
+#cursor {
+  position:fixed; top:0; left:0;
+  pointer-events:none; z-index:9999;
+  transform:translate(-50%,-50%);
+}
+#cur-ring {
+  width:42px; height:42px;
+  border:1.5px solid rgba(0,255,231,0.5);
+  border-radius:50%;
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  transition:width .22s, height .22s, border-color .22s, box-shadow .22s;
+}
+#cur-dot {
+  width:5px; height:5px;
+  background:var(--cyan);
+  border-radius:50%;
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  box-shadow:0 0 8px var(--cyan);
+  transition:width .15s, height .15s;
+}
+/* crosshair ticks */
+#cur-ticks::before, #cur-ticks::after {
+  content:''; position:absolute;
+  background:rgba(0,255,231,0.3);
+}
+#cur-ticks {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:42px; height:42px;
+}
+#cur-ticks::before { width:1px; height:10px; left:50%; top:3px; transform:translateX(-50%); }
+#cur-ticks::after  { width:10px; height:1px; top:50%; left:3px; transform:translateY(-50%); }
+
+/* up / down arrow labels */
+#cur-up, #cur-down {
+  position:absolute; left:50%; transform:translateX(-50%);
+  font-family:'Share Tech Mono',monospace; font-size:10px;
+  color:var(--cyan); line-height:1;
+  opacity:0; transition:opacity .2s, transform .2s;
+  white-space:nowrap;
+}
+#cur-up   { top:-22px; }
+#cur-down { bottom:-22px; }
+
+
+/* STATE CLASSES */
+#cursor.can-up   #cur-up   { opacity:1; transform:translateX(-50%) translateY(-2px); }
+#cursor.can-down #cur-down { opacity:1; transform:translateX(-50%) translateY(2px); }
+#cursor.has-nav  #cur-ring { border-color:rgba(0,255,231,0.9); box-shadow:0 0 14px rgba(0,255,231,0.3); }
+#cursor.hovering #cur-ring { width:58px; height:58px; border-color:rgba(0,255,231,0.85); box-shadow:0 0 22px rgba(0,255,231,0.25); }
+#cursor.hovering #cur-dot  { width:7px; height:7px; }
+#cursor.clicking #cur-ring { border-color:#fff; box-shadow:0 0 28px rgba(255,255,255,0.45); }
+#cursor.clicking #cur-dot  { background:#fff; box-shadow:0 0 12px #fff; }
+
+/* ── SCROLL TEXT ATTACHED TO CURSOR ── */
+#cur-scroll {
+  position:absolute;
+  left:30px; top:50%;
+  transform:translateY(-50%);
+  display:flex; align-items:center; gap:0px;
+  opacity:1; transition:opacity 0.5s;
+  pointer-events:none;
+  filter:drop-shadow(0 0 10px rgba(0,255,231,0.4));
+}
+#cursor.hide-scroll #cur-scroll { opacity:0; }
+
+/* SCROLL letters */
+.csl {
+  font-family:'Orbitron',monospace; font-weight:900;
+  font-size:13px; letter-spacing:1.5px; color:#fff;
+  text-shadow:0 0 12px rgba(0,255,231,0.5);
+  line-height:1;
+  animation:csl-breathe 2.4s ease-in-out infinite;
+}
+.csl:nth-child(1){animation-delay:0s}
+.csl:nth-child(2){animation-delay:0.08s}
+.csl:nth-child(3){animation-delay:0.16s}
+.csl:nth-child(5){animation-delay:0.32s}
+.csl:nth-child(6){animation-delay:0.40s}
+@keyframes csl-breathe {
+  0%,100%{ color:#fff; text-shadow:0 0 10px rgba(0,255,231,0.4); }
+  50%    { color:var(--cyan); text-shadow:0 0 20px rgba(0,255,231,1),0 0 6px rgba(0,255,231,0.6); }
+}
+
+/* animated O inside cursor scroll text */
+.csl-o-wrap {
+  width:18px; height:18px;
+  display:inline-flex; align-items:center; justify-content:center;
+  position:relative;
+}
+.csl-o-ring {
+  width:14px; height:14px;
+  border:1.5px solid rgba(0,255,231,0.25);
+  border-radius:50%;
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+}
+.csl-o-arc {
+  width:14px; height:14px;
+  border-radius:50%;
+  border:1.5px solid transparent;
+  border-top-color:var(--cyan);
+  border-right-color:rgba(0,255,231,0.35);
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  animation:sl-spin 1.2s linear infinite;
+  box-shadow:0 0 5px rgba(0,255,231,0.35);
+}
+.csl-o-dot {
+  width:3px; height:3px;
+  background:var(--cyan);
+  border-radius:50%;
+  box-shadow:0 0 5px var(--cyan);
+  position:absolute; left:50%;
+  transform:translateX(-50%);
+  animation:sl-bounce 1.2s ease-in-out infinite;
+}
+
+/* hide on mobile */
+@media(hover:none){ #cursor{ display:none; } body{ cursor:auto; } }
 
 /* CANVAS */
 #bg { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; }
@@ -228,14 +352,8 @@ html, body {
 }
 .clink:hover { background:rgba(0,255,231,0.1); border-color:var(--cyan); color:var(--cyan); }
 
-/* SCROLL HINT */
-#hint {
-  position:fixed; bottom:26px; left:50%; transform:translateX(-50%);
-  font-family:'Share Tech Mono',monospace; font-size:10px;
-  letter-spacing:4px; color:rgba(0,255,231,0.45);
-  text-transform:uppercase; z-index:100;
-  animation:pulse 2s infinite; transition:opacity 0.5s;
-}
+@keyframes sl-spin   { to{ transform:translate(-50%,-50%) rotate(360deg); } }
+@keyframes sl-bounce { 0%,100%{top:3px;opacity:1} 50%{top:10px;opacity:0.5} }
 @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
 
 /* SECTION COUNTER */
@@ -256,6 +374,28 @@ html, body {
 
 <!-- BG CANVAS -->
 <canvas id="bg"></canvas>
+
+<!-- CUSTOM CURSOR -->
+<div id="cursor">
+  <div id="cur-ring"></div>
+  <div id="cur-ticks"></div>
+  <div id="cur-dot"></div>
+  <div id="cur-up">▲</div>
+  <div id="cur-down">▼</div>
+  <!-- SCROLL text rides beside cursor -->
+  <div id="cur-scroll">
+    <span class="csl">S</span>
+    <span class="csl">C</span>
+    <span class="csl">R</span>
+    <span class="csl-o-wrap">
+      <div class="csl-o-ring"></div>
+      <div class="csl-o-arc"></div>
+      <div class="csl-o-dot"></div>
+    </span>
+    <span class="csl">L</span>
+    <span class="csl">L</span>
+  </div>
+</div>
 
 <!-- OVERLAYS -->
 <div id="scan"></div>
@@ -460,9 +600,6 @@ html, body {
   </div>
 </div>
 
-<!-- SCROLL HINT -->
-<div id="hint">↓ &nbsp; scroll / arrow keys to navigate</div>
-
 <!-- ===================== SCRIPTS ===================== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -594,8 +731,8 @@ function goTo(i) {
   document.getElementById('pbar').style.width = ((i/(TOTAL-1))*100)+'%';
   // counter
   document.getElementById('counter').textContent = '0'+(i+1)+' / 0'+TOTAL;
-  // hint
-  document.getElementById('hint').style.opacity = i===0 ? '1' : '0';
+  // scroll text on cursor — only show on section 0
+  document.getElementById('cursor').classList.toggle('hide-scroll', i !== 0);
 }
 
 // Mouse wheel
@@ -622,17 +759,44 @@ window.addEventListener('touchend',   e => {
   if (Math.abs(dy) > 45) goTo(cur + (dy>0?1:-1));
 }, {passive:true});
 
-// ── RENDER LOOP ──────────────────────────────────────────────
+// ── CUSTOM CURSOR ────────────────────────────────────────────
+const cursorEl = document.getElementById('cursor');
+
+let cx = innerWidth/2, cy = innerHeight/2;
+let rx = innerWidth/2, ry = innerHeight/2;
 let mx=0, my=0;
+
 window.addEventListener('mousemove', e => {
-  mx = (e.clientX/innerWidth  - .5)*2;
-  my = (e.clientY/innerHeight - .5)*-2;
+  cx = e.clientX; cy = e.clientY;
+  mx = (cx/innerWidth  - .5)*2;
+  my = (cy/innerHeight - .5)*-2;
+  cursorEl.classList.toggle('can-up',   cur > 0);
+  cursorEl.classList.toggle('can-down', cur < TOTAL-1);
+  cursorEl.classList.toggle('has-nav',  cur > 0 || cur < TOTAL-1);
 });
 
+// hover detection
+document.querySelectorAll('a, button, .ndot, .clink, [onclick]').forEach(el => {
+  el.addEventListener('mouseenter', () => cursorEl.classList.add('hovering'));
+  el.addEventListener('mouseleave', () => cursorEl.classList.remove('hovering'));
+});
+
+// click flash
+window.addEventListener('mousedown', () => cursorEl.classList.add('clicking'));
+window.addEventListener('mouseup',   () => cursorEl.classList.remove('clicking'));
+
+// ── RENDER LOOP ──────────────────────────────────────────────
 const clock = new THREE.Clock();
 (function tick() {
   requestAnimationFrame(tick);
   const t = clock.getElapsedTime();
+
+  // lag cursor for smooth trailing effect
+  rx += (cx - rx) * 0.12;
+  ry += (cy - ry) * 0.12;
+  cursorEl.style.left = rx + 'px';
+  cursorEl.style.top  = ry + 'px';
+
   // smooth camera travel
   currentZ += (targetZ - currentZ) * .055;
   camera.position.z = -currentZ;
